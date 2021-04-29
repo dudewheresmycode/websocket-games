@@ -5,8 +5,11 @@ This project was started to create a couple simple games to play with friends an
 
 ### Develop
 ```bash
-yarn # insall dependencies
-yarn develop # run app in development mode
+# install dependencies
+yarn
+
+# run app in development mode
+yarn develop
 ```
 
 - React app should be running at http://localhost:3333
