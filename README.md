@@ -3,7 +3,10 @@
 This project was started to create a couple simple games to play with friends and co-workers in real-time.
 
 
-### Develop
+### Getting Started
+
+Running the app locally is super easy. Clone this repo, and from the root:
+
 ```bash
 # install dependencies
 yarn
