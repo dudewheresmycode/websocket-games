@@ -24,7 +24,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(express.static(STATIC_BUILD));
-app.get((req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(`${STATIC_BUILD}/index.html`);
 });
 

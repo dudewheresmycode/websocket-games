@@ -8,8 +8,7 @@ import SetUsernameDialog from '../dialogs/SetUsername';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Grid, Button, List, ListItem, ListItemText, ListItemIcon, ListItemAvatar } from '@material-ui/core';
 
-const SOCKET_ENDPOINT = 'http://localhost:8081';
-// process.env.REACT_APP_SOCKET_ENDPOINT
+const SOCKET_ENDPOINT = process.env.REACT_APP_SOCKET_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 function ActiveRoom() {
   const {

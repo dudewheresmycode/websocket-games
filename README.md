@@ -5,7 +5,7 @@ This project was started to create a couple simple games to play with friends an
 
 ### Getting Started
 
-Running the app locally is super easy. Clone this repo, and from the root:
+Running the app locally is super easy.
 
 ```bash
 # install dependencies
