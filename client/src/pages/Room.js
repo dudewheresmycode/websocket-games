@@ -6,7 +6,30 @@ import openSocket from 'socket.io-client';
 import { useAppState } from '../providers/AppStateProvider';
 import SetUsernameDialog from '../dialogs/SetUsername';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Grid, Button, List, ListItem, ListItemText, ListItemIcon, ListItemAvatar } from '@material-ui/core';
+import shuffle from '../utils/shuffle';
+import {
+  Card,
+  CardContent,
+  Box,
+  Grid,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemAvatar,
+  ListItemSecondaryAction,
+  Typography,
+  Avatar,
+  Icon,
+  Tooltip,
+  TextField,
+  Container,
+  IconButton,
+} from '@material-ui/core';
+import StarsIcon from '@material-ui/icons/Stars';
+import GroupIcon from '@material-ui/icons/Group';
+import CheckIcon from '@material-ui/icons/Check';
 
 const SOCKET_ENDPOINT = process.env.REACT_APP_SOCKET_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -20,6 +43,7 @@ function ActiveRoom() {
   } = useAppState();
   const [members, setMembers] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [answer, setAnswer] = useState('');
   const [gameState, setGameState] = useState(null);
   const params = useParams();
   const [socketStatus, setSocketStatus] = useState({ connected: false });
@@ -68,10 +92,10 @@ function ActiveRoom() {
 
   useEffect(() => {
     console.log('username change!', username, socket);
-    if (socket?.connected) {
+    if (socket?.connected && username) {
       socket.emit('setting.username', username);
     }
-  }, [socket, username]);
+  }, [username]);
 
   const handleGameStart = useCallback(() => {
     socket.emit('game.start');
@@ -81,6 +105,25 @@ function ActiveRoom() {
     socket.emit('game.new_word');
   }, [socket]);
 
+  const handleNextTurn = useCallback(() => {
+    socket.emit('game.next');
+  }, [socket]);
+
+  const handleAnswerChange = useCallback((e) => {
+    setAnswer(e.target.value);
+  }, []);
+
+  const handleAnswerSubmit = useCallback(() => {
+    socket.emit('game.answer', answer);
+    setAnswer('');
+  }, [answer, socket]);
+
+  const handleChoice = useCallback((choice) => {
+    if (userid !== gameState?.dealer) {
+      socket.emit('game.choose', choice);
+    }
+  }, [socket, userid, gameState?.dealer]);
+
   const isHost = useMemo(() => {
     return userid === members?.[0]?.id;
   }, [userid, members]);
@@ -89,31 +132,182 @@ function ActiveRoom() {
     return userid === gameState?.dealer;
   }, [userid, gameState]);
 
+  const isAnswered = useMemo(() => {
+    return !!gameState?.answers.find(answer => answer.userid === userid)
+  }, [gameState, userid]);
+  
+  // const answerChoices = useMemo(() => {
+  //   return shuffle([
+  //     { userid: gameState?.dealer, answer: gameState?.word[1] },
+  //     ...(gameState?.answers || [])
+  //   ]);
+  // }, [gameState?.answers]);
+  // const isAllAnswered = useMemo(() => {
+  //   // filter dealer
+  //   const players = members.filter(member => member.id !== gameState?.dealer);
+  //   console.log('players', players);
+  //   const _answers = gameState?.answers.map(a => a.userid) || [];
+  //   return players.every(player => _answers.includes(player.id));
+  //   // return !!gameState?.answers.find(answer => answer.userid === userid)
+  // }, [gameState, members]);
+
   return (
-    <Grid container={true}>
-      <Grid item={true} xs={1} sm={4} md={3}>
-        <List>
-          {members?.length ? members.map(member => (
-            <ListItem>
-              <ListItemAvatar>
-                <Animal {...member.animal} square={true} size="28px" />
-              </ListItemAvatar>
-              <ListItemText primary={member.username} />
-            </ListItem>
-          )) : null}
-        </List>
+    <Container>
+      <Grid container={true} spacing={4}>
+        <Grid item={true} xs={1} sm={4}>
+          <List>
+            {members?.length ? members.map((member, index) => (
+              <ListItem key={index}>
+                <ListItemAvatar>
+                  <Avatar><Animal {...member.animal} square={true} size="40px" /></Avatar>
+                </ListItemAvatar>
+                <ListItemText primary={member.username} secondary={index === 0 ? (
+                  <Tooltip title="Game Host">
+                    <GroupIcon color="disabled" fontSize="small" />
+                  </Tooltip>
+                ) : null} />
+                <ListItemSecondaryAction>
+                    {member.id === gameState?.dealer ? (
+                      <Tooltip title="Current Dealer">
+                        <StarsIcon color="primary" fontSize="small" />
+                      </Tooltip>
+                    ) : null}
+                  {/* <IconButton edge="end" aria-label="delete">
+                    <DeleteIcon />
+                  </IconButton> */}
+                </ListItemSecondaryAction>
+
+              </ListItem>
+            )) : null}
+          </List>
+        </Grid>
+        <Grid item={true} xs={true}>
+          {gameState ? (
+
+            <Box mt={3}>
+            {isDealer ? (
+              <div>
+                <Typography variant="h3">{gameState.word[0]}</Typography>
+                <Typography>{gameState.word[1]}</Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleChangeWord}
+                >
+                    Change Word
+                </Button>
+                <Button
+                  color="primary"
+                  variant="contained"
+                  size="large"
+                  onClick={handleNextTurn}
+                >
+                  Skip Turn
+                </Button>  
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleGameStart}
+                >
+                  New Game
+                </Button>            
+              </div>
+            ) : (
+              <>
+                <Typography>The word is</Typography>
+                <Typography variant="h3">{gameState.word[0]}</Typography>
+                {
+                  isAnswered ? (
+                    <Typography>Good luck!</Typography>
+                  ) : (
+                    <>
+                      <TextField
+                        label="Your Answer"
+                        value={answer}
+                        fullWidth={true}
+                        multiline={true}
+                        rows={2}
+                        helperText="If you know it, enter the correct definition for 3 points. Or, make up a conviencing one to fool other players and earn 1 point."
+                        onChange={handleAnswerChange}
+                      />
+                      <Button
+                        onClick={handleAnswerSubmit}
+                        variant="contained"
+                      >
+                        Submit
+                      </Button>
+                    </>
+                  )
+                }
+              </>
+            )}
+            {/* {gameState.isAllChoosen ? (
+              
+            ) : (
+
+            )} */}
+            {gameState.isAllAnswered ? (
+              <>
+                <Typography>Select the correct definition:</Typography>
+                <List>
+                  {gameState?.randomized.map(answer => (
+                    <ListItem
+                      key={answer.userid}
+                      button={userid !== gameState?.dealer}
+                      selected={answer.userid === gameState.choices[userid]?.userid}
+                      onClick={() => handleChoice(answer)}
+                    >
+                      <ListItemText primary={answer.answer} />
+                      <ListItemSecondaryAction>
+                        {answer.userid === gameState.choices[userid]?.userid ? <CheckIcon /> : null}
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            ) : (
+              <Typography>Waiting for all answers</Typography>
+            )}
+
+            </Box>
+          ) : (
+            <Box mt={3}>
+              <Grid container={true} spacing={3} justify="center">
+                <Grid xs={12} sm={5} item={true} align="center">
+                  {isHost ? (
+                    <Box mt={5}>
+                      <Button
+                        color="primary"
+                        variant="contained"
+                        size="large"
+                        onClick={handleGameStart}
+                      >
+                        Start Game
+                      </Button>
+                    </Box>
+                  ) : (
+                    <>
+                      <Typography color="textSecondary">Waiting for the host to the start game.</Typography>
+                      <video
+                        src="https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.mp4"
+                        width="100%"
+                        controls={false}
+                        muted={true}
+                        autoPlay={true}
+                        loop={true}
+                      ></video>
+                    </>
+                  )}
+                </Grid>
+              </Grid>
+            </Box>          
+          )}
+
+
+          <pre>{JSON.stringify(gameState, null, 1)}</pre>
+        </Grid>
+        
       </Grid>
-      <Grid item={true} xs={true}>
-        {isHost ? (
-          <Button onClick={handleGameStart}>Start Game</Button>
-        ) : null}
-        {isDealer ? (
-          <Button onClick={handleChangeWord}>Change Word</Button>
-        ) : null}
-        <pre>{JSON.stringify(gameState, null, 1)}</pre>
-      </Grid>
-      
-    </Grid>
+    </Container>
   )
 }
 

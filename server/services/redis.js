@@ -9,6 +9,10 @@ client.on('error', function(error) {
   console.error(error);
 });
 
+export const KEYS = {
+  MEMBERS: (roomId) => `members:${roomId}`
+};
+
 export const get = promisify(client.get).bind(client);
 export const set = promisify(client.set).bind(client);
 export const sadd = promisify(client.sadd).bind(client);
